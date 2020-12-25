@@ -4,8 +4,10 @@ import pandas as pd
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics.pairwise import haversine_distances
 from math import radians
+from shapely.geometry import Point
 
 EARTH_RADIUS = 6370
+AVERAGE_KM_H_SPEED = 850
 
 
 # class ProxyModel:
@@ -28,6 +30,7 @@ class PetrModel:
         country_df = world.loc[world['name'].isin(self.countries)][['name', 'geometry']].set_index('name')
         country_poly_centers = {country: country_df.loc[country].geometry.centroid \
                                 for country in country_df.index.values}
+        country_poly_centers['Russia'] = Point(55.7522200, 37.6155600)
         self.country_poly_centers = country_poly_centers
 
     @classmethod
@@ -48,7 +51,7 @@ class PetrModel:
         sea, winter, spring, summer, autumn, sightseeing, cat_dog, exotic, hours = query
         sightseeing = (sightseeing - 1) / (10 - 1)
         exotic = (exotic - 1) / (10 - 1)
-        distance = (hours - 1) / (12 - 1)
+        distance = (hours - 3) / (12 - 3)
         query = sea, winter, spring, summer, autumn, sightseeing, cat_dog, exotic, distance
         return query
 
@@ -64,12 +67,10 @@ class PetrModel:
         data['Distance'] = distances
         data['Sightseeing (0 - 10)'] = data['Sightseeing (0 - 10)'] / 10
         data['Exotic'] = data['Exotic'] / 10
+        data = data.loc[(data['Distance'] / AVERAGE_KM_H_SPEED <= flight_time) & (data['Sea'] == sea)]
+        assert len(data) > 0
         min_dist, max_dist = data['Distance'].min(), data['Distance'].max()
         data['Distance'] = (data['Distance'] - min_dist) / (max_dist - min_dist)
-        data = data.loc[
-                        (data['Distance'] <= 1 + (flight_time - 1) / (12 - 1))
-                        & (data['Sea'] == sea)
-                       ]
         return data
 
     # sea, winter, spring, summer, autumn, sightseeing, cat_dog, exotic, hours = query
@@ -93,12 +94,3 @@ class PetrModel:
             others.remove(top_1)
             sample_size = min(len(others), top_k_countires)
             return top_1, np.random.choice(others, sample_size, replace=False)
-
-
-
-
-
-
-
-
-
